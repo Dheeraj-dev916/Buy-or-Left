@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Secrets
+.env
+.env.*
+
+# Log file (per AGENTS.md §2: never commit)
+log.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Submission artifacts (built locally)
+code.zip
+
+# Qoder IDE cache
+.qoder/
