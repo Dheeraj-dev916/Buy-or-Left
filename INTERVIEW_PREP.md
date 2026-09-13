@@ -1,459 +1,342 @@
-# Buy or Wait? — Complete Project Documentation
-## Interview Preparation Guide
+# Buy or Wait? — Interview Preparation Guide
+
+> This guide helps you explain your project clearly in an AI interview.
+> Read each section and practice explaining it in your own words.
 
 ---
 
-## 1. Project Overview
+## 1. How to Introduce Your Project (30-Second Pitch)
 
-**Project Name:** Buy or Wait? — AI-Powered Financial Decision Agent  
-**Hackathon:** HackerRank Orchestrate (September 2026, 24-hour challenge)  
-**Problem:** Build a system that decides whether a user can safely afford a requested expense, considering their entire financial picture — not just their current balance.
+**Memorize this and say it naturally:**
 
-**One-liner:** A deterministic financial agent that simulates a user's cash flow over 90 days and recommends the safest way to pay for a purchase, trip, investment, or other expense.
+> "I built an AI-powered financial agent called **Buy or Wait?** for the HackerRank Orchestrate hackathon. The problem is simple — when someone wants to buy something, the system looks at their entire financial picture — current balance, recurring expenses, future income, pending payments — and tells them the safest way to pay. It can recommend paying in full, using installments, paying partially, waiting for a better date, or not buying at all. The whole system runs in about 30 seconds for 250 requests, costs zero dollars, and uses no external APIs."
 
 ---
 
-## 2. Problem Statement (What the Agent Solves)
+## 2. The Problem in Simple Words
 
-For every purchase/payment request, the agent must answer:
-- **Can the user afford it right now?** (full payment today)
-- **Can they afford it with a plan?** (installments, partial payment, or spending changes)
-- **Can they afford it later?** (wait for a safer date)
-- **Can they not afford it at all?** (not recommended)
+**Think of it like this:**
 
-The recommendation must be **personalized** — two users with the same balance may get different recommendations based on their:
-- Recurring expenses and income patterns
-- Pending payments and confirmed future transactions
-- Protected expense categories (rent, groceries, etc.)
-- Willingness to adjust flexible spending
-- Payment preferences (full, installments, partial)
-- Financial priorities and minimum balance requirements
+Imagine your friend asks you: *"I want to buy a laptop for ₹50,000. Can I afford it?"*
 
----
+You wouldn't just check their bank balance. You'd think:
+- "They have ₹80,000 now, but rent of ₹25,000 is due next week"
+- "Their salary of ₹60,000 comes on the 1st"
+- "They have a ₹5,000 monthly gym membership they could cancel"
+- "They want to keep at least ₹10,000 as emergency money"
 
-## 3. Tech Stack
+That's exactly what this system does — but automatically, for 250 different people with different financial situations.
 
-| Component | Technology | Why |
-|-----------|-----------|-----|
-| **Language** | Python 3 | Fast prototyping, rich data ecosystem |
-| **Data Processing** | pandas | CSV loading, filtering, grouping, merging |
-| **Numerics** | numpy | Median calculation, statistical aggregation |
-| **Standard Library** | `os`, `sys`, `datetime`, `calendar`, `re`, `collections` | File paths, dates, regex parsing, hash maps |
-| **AI/ML** | None at inference | 100% deterministic rule-based engine |
-| **API Calls** | None | Fully offline, zero cost per request |
-| **Runtime** | ~32 seconds for 250 requests | 0.13s per request |
+**The 4 possible answers the system gives:**
 
-**Key decision:** We chose a **deterministic rule-based approach** over LLM-based reasoning because:
-- Reproducible results (same input → same output)
-- Zero API cost ($0.00 for the entire run)
-- No latency concerns
-- No hallucination risk on financial calculations
-- Full auditability of every decision
+| Answer | What it means | Example |
+|--------|--------------|---------|
+| **Affordable Now** | Pay the full amount today, you'll still be fine | "You have ₹80K, laptop is ₹50K, even after all future bills you'll stay above ₹10K" |
+| **Affordable with a Plan** | You can do it, but need installments or spending cuts | "Pay ₹25K in 3 monthly installments of ₹17K" |
+| **Affordable Later** | Wait a few weeks when your salary comes in | "Wait until March 5th when your next salary arrives" |
+| **Not Affordable** | Even with plans and cuts, it's not safe | "Your expenses are too high for this purchase" |
 
 ---
 
-## 4. Architecture
+## 3. Tech Stack (Keep It Simple)
 
-### 4.1 Three-Layer Pipeline
+**If asked "What technologies did you use?", say:**
 
-```
-┌─────────────┐     ┌──────────────┐     ┌────────────────────┐
-│   main.py   │ ──▶ │   agent.py   │ ──▶ │ financial_engine.py │
-│  (CLI Entry)│     │  (Decisions) │     │  (Cashflow Sim)    │
-└─────────────┘     └──────────────┘     └────────────────────┘
-```
+> "I used **Python** with **pandas** for data processing and **numpy** for calculations. The system is fully deterministic — meaning it uses rules and math, not AI models. No OpenAI, no APIs, no cloud services. This was a deliberate choice because financial calculations need exact answers, not approximate ones."
 
-**Dependency direction is strictly one-way:** `main.py` → `agent.py` → `financial_engine.py`. The engine layer has no imports back into the agent.
+| Technology | What it does | Why you chose it |
+|-----------|-------------|-----------------|
+| **Python** | Main programming language | Best for data processing, quick to build |
+| **pandas** | Reading and filtering CSV files | Fast, easy to use, handles large datasets |
+| **numpy** | Math calculations | Finding median, averages |
+| **No AI/LLM** | — | Financial math must be exact, not approximate |
 
-### 4.2 Layer Responsibilities
+**If they ask "Why not use an LLM like GPT?", say:**
 
-| Layer | File | Responsibility |
-|-------|------|---------------|
-| **Entry** | `main.py` | Load `requests.csv`, call `run_batch()`, enforce column order, write `output.csv` |
-| **Orchestrator** | `agent.py` | Cache datasets, build financial state, run decision pipeline, generate explanations |
-| **Engine** | `financial_engine.py` | 90-day cashflow simulation, recurring pattern detection, exchange rates, message parsing, safety algorithms |
-
-### 4.3 Data Flow
-
-```
-dataset/requests.csv ──▶ main.py ──▶ agent.run_batch()
-                                          │
-                    ┌─────────────────────┘
-                    ▼
-              For each request:
-                    │
-                    ├──▶ get_data() (cached CSVs)
-                    │     ├── financial_profiles.csv
-                    │     ├── financial_events.csv
-                    │     ├── messages.csv
-                    │     ├── exchange_rates.csv
-                    │     └── request_payment_options.csv
-                    │
-                    ├──▶ financial_engine.get_user_financial_state()
-                    │     ├── Apply image amounts to events
-                    │     ├── Parse messages for salary/date overrides
-                    │     ├── Identify recurring expenses from history
-                    │     ├── Identify recurring income from history
-                    │     ├── Project 90-day cashflow
-                    │     └── Return structured state
-                    │
-                    ├──▶ compute_amount_safe_to_pay()
-                    ├──▶ compute_earliest_full_payment_date()
-                    │
-                    └──▶ Decision Pipeline (priority order):
-                          1. Full payment
-                          2. Installments
-                          3. Partial payment
-                          4. Full payment + spending changes
-                          5. Partial payment + spending changes
-                          6. Wait
-                          7. Not recommended
-```
+> "Three reasons: First, LLMs make arithmetic mistakes — they can hallucinate numbers. Second, they're not reproducible — same input can give different outputs. Third, they cost money per request. My rule-based approach is exact, free, and runs in 30 seconds."
 
 ---
 
-## 5. How It Works — Detailed Workflow
+## 4. How the System Works (Step by Step)
 
-### Step 1: Load User Financial Profile
-From `financial_profiles.csv`:
-- **home_currency** — user's primary currency (INR, ZAR, IDR, USD, EUR)
-- **current_available_balance** — money available right now
-- **minimum_balance_to_keep** — floor the user never wants to breach
-- **financial_priorities** — what matters most (education, retirement, etc.)
-- **expense_categories_to_protect** — categories that can't be cut (rent, groceries)
-- **expense_categories_user_is_willing_to_reduce** — flexible categories
-- **expense_categories_user_is_willing_to_stop** — stoppable categories
-- **payment_methods_user_will_consider** — which methods the user accepts
-- **max_installment_months** — maximum installment duration the user allows
-
-### Step 2: Parse Messages
-From `messages.csv` — 216 messages from 5 source types:
-
-| Source | What it communicates | How we handle it |
-|--------|---------------------|-----------------|
-| **employer** | Salary changes, date shifts, unpaid leave | Extract salary override amount and date (English + Indonesian keywords) |
-| **bank** | Internal transfers, failed debits | Ignore transfer events (same account holder), track failed retries |
-| **merchant** | Pending refunds | Don't count as income until settled |
-| **financial_service** | Unrealized investment gains | Don't count as available cash |
-| **service_provider** | Pending payouts | Don't count until completed |
-
-**Salary parsing logic:**
-- Only triggers on **explicit change signals**: "reduced", "temporary", "unpaid leave" (English) or "gaji sementara", "tanpa gaji", "dikurangi" (Indonesian)
-- Takes the **first currency amount** match to avoid picking up one-time adjustments
-- Also detects **salary date overrides** when messages say salary is "expected on" or "confirmed for" a specific date
-
-### Step 3: Identify Recurring Patterns
-From `financial_events.csv` — 25,342 historical events:
-
-**Recurring Expenses:**
-- Group settled debit events by `(description, category, flexibility)`
-- Require ≥2 occurrences across ≥2 different months
-- Calculate average amount and typical day of month
-- Preserve flexibility type: `fixed`, `stoppable`, `reducible`, `reducible_or_stoppable`
-
-**Recurring Income:**
-- Group settled salary credit events by day of month
-- Use most recent salary amount (or message override)
-- Project forward monthly over the 90-day window
-
-### Step 4: 90-Day Cashflow Simulation
-The `build_daily_cashflows()` function projects the user's balance day-by-day for 90 days:
+**Think of it as a 5-step assembly line:**
 
 ```
-Day 0:  current_balance
-Day 1:  balance + scheduled debits/credits on day 1
-Day 2:  balance + scheduled debits/credits on day 2
+Step 1: KNOW THE USER
+   ↓  "Who is this person? What's their balance? What do they protect?"
+Step 2: UNDERSTAND THE PAST
+   ↓  "What do they spend monthly? What's their income pattern?"
+Step 3: PREDICT THE FUTURE
+   ↓  "What will their balance look like every day for the next 90 days?"
+Step 4: CHECK SAFETY
+   ↓  "If they pay X today, will they survive the next 90 days?"
+Step 5: RECOMMEND
+   ↓  "What's the best way to pay — full, installments, wait, or no?"
+```
+
+### Step 1: Know the User
+Read the user's profile — their currency (₹, $, €, etc.), current balance, minimum balance they want to keep, which expenses they protect (like rent), and which they're willing to cut.
+
+### Step 2: Understand the Past
+Look at their transaction history (25,000+ events) and find patterns:
+- "Rent of ₹25,000 happens on the 5th of every month"
+- "Netflix of ₹649 happens on the 15th"
+- "Salary of ₹60,000 comes on the 1st"
+
+Rule: Something is "recurring" only if it appears in **2+ different months**.
+
+### Step 3: Predict the Future (90-Day Simulation)
+This is the **heart of the system**. We create a day-by-day balance forecast:
+
+```
+Day 0 (today):     ₹80,000  (current balance)
+Day 1:             ₹75,000  (electricity bill ₹5,000)
+Day 5:             ₹50,000  (rent ₹25,000)
+Day 15:            ₹49,351  (Netflix ₹649)
+Day 30:            ₹1,09,351 (salary ₹60,000 arrives)
 ...
-Day 90: balance + recurring expenses + recurring income
+Day 90:            ₹XX,XXX
 ```
 
-**What goes into the projection:**
-1. **Pending/scheduled debits** — future confirmed payments (reserved)
-2. **Scheduled credits** — confirmed salary (counted)
-3. **Recurring expenses** — projected monthly from historical patterns
-4. **Recurring income** — projected monthly salary from history
-5. **Currency conversion** — all amounts converted to home currency using dated exchange rates (with ±7 day fallback)
+We include:
+- **Pending payments** (bills that are confirmed but not yet paid)
+- **Recurring expenses** (rent, subscriptions, utilities — projected monthly)
+- **Confirmed salary** (only when it's certain, never "maybe" income)
 
-**What is excluded (per challenge rules):**
-- Pending credits (not yet settled)
-- Failed/cancelled transactions
-- Unrealized investment values
-- Bonuses, commissions, lottery proceeds
+We exclude:
+- Pending credits (refunds not yet received)
+- Bonuses, lottery, commissions (uncertain income)
+- Unrealized investment gains (paper profits aren't cash)
 
-### Step 5: Safety Algorithms
+### Step 4: Check Safety
+Two key calculations:
 
-**`compute_amount_safe_to_pay()`:**
+**"How much is safe to pay today?"**
 ```
-baseline_min = minimum balance across all 90 projected days (from payment day onward)
-headroom = baseline_min - minimum_balance_to_keep
-safe_amount = max(0, min(requested_amount, headroom))
-```
+Look at the lowest balance across all 90 days
+Subtract the user's minimum required balance
+Whatever is left = safe to spend today
 
-**`compute_earliest_full_payment_date()`:**
-```
-For each day 0 to 90:
-  simulated_balances = [projected_balance - requested_amount for all future days]
-  if all simulated_balances >= minimum_balance_to_keep:
-    return this date as the earliest safe full-payment date
-return None (never becomes safe)
+Example:
+  Lowest future balance: ₹35,000
+  User's minimum:        ₹10,000
+  Safe to pay:           ₹25,000
 ```
 
-**`test_plan_safety()`:**
+**"When is the earliest they can pay the full amount?"**
 ```
-Given a payment schedule [(day_offset, amount), ...]:
-  subtract each payment from all subsequent projected balances
-  if all adjusted balances >= minimum_balance_to_keep:
-    plan is safe
-```
-
-### Step 6: Decision Pipeline (Priority Order)
-
-```
-1. FULL PAYMENT (affordable_now)
-   Condition: user accepts full_payment AND safe_amount >= requested_amount
-   Result: Pay full amount today
-
-2. INSTALLMENTS (affordable_with_plan)
-   Condition: user accepts installments
-   Process: Evaluate each installment option from request_payment_options.csv
-            - Build payment schedule from first_payment_date + frequency
-            - Test safety against 90-day balance curve
-            - Respect max_installment_months from profile
-   Ranking: Deadline compliance → lowest total cost → earliest start → 
-            fewer payments → lowest option_id
-
-3. PARTIAL PAYMENT (affordable_with_plan)
-   Condition: user accepts partial_payment AND request allows it AND
-              0 < safe_amount < requested_amount AND
-              earliest_full_date <= desired_completion_date
-   Plan: Pay safe_amount today + remainder on earliest_full_date
-
-4. SPENDING CHANGES — Full Payment
-   Condition: shortfall exists AND flexible expenses can cover it
-   Process: Find stoppable/reducible recurring expenses in categories 
-            user is willing to adjust (not protected)
-   Max 3 changes: stop:<event_id> or reduce_to:<event_id>:<new_amount>
-
-5. SPENDING CHANGES — Partial Payment
-   Same as above but for partial payment scenario
-
-6. WAIT (affordable_later)
-   Condition: user accepts full_payment AND earliest_full_date exists
-              AND earliest_full_date <= desired_completion_date
-   Result: Wait and pay full amount on earliest_full_date
-
-7. NOT RECOMMENDED (not_affordable)
-   Fallback: No safe plan found within the forecast period
+Try paying the full amount on Day 0  → balance goes negative? Try Day 1
+Try Day 1  → still goes negative? Try Day 2
+...
+Keep going until all future balances stay above minimum
+That day = earliest safe full payment date
 ```
 
-### Step 7: Generate Output
-For each request, produce one row with:
+### Step 5: Recommend (Decision Priority)
+The system tries options in this order and picks the first one that works:
 
-| Field | Description |
-|-------|------------|
-| `amount_safe_to_pay` | Max safe amount today (0 ≤ x ≤ requested_amount) |
-| `affordability_status` | `affordable_now`, `affordable_with_plan`, `affordable_later`, `not_affordable` |
-| `recommended_payment_method` | `full_payment`, `installments`, `partial_payment`, `wait`, `not_recommended` |
-| `payment_plan` | Chronological `YYYY-MM-DD:amount` entries separated by `\|`, or `none` |
-| `earliest_date_for_full_payment` | First safe date for full payment (equals request_date if affordable_now) |
-| `spending_changes_needed` | Up to 3 `stop:` / `reduce_to:` actions, or `none` |
-| `decision_explanation` | Human-readable summary of balance, headroom, and recommendation |
+1. **Full payment today** — Can they pay the whole thing and stay safe?
+2. **Installments** — Can they split it into monthly payments? (Check each available plan)
+3. **Partial payment** — Pay some now, rest later?
+4. **Spending changes + full payment** — Cut some flexible expenses to afford it?
+5. **Spending changes + partial** — Cut expenses and pay in parts?
+6. **Wait** — Just wait for a better date?
+7. **Not recommended** — Nothing works safely
 
 ---
 
-## 6. Dataset Schema
+## 5. The Three Code Files (Architecture)
 
-### 6.1 Input Files
+**If asked "Explain your code structure", say:**
 
-| File | Rows | Key Columns | Purpose |
-|------|------|-------------|---------|
-| `requests.csv` | 250 | request_id, user_id, request_date, requested_amount, desired_completion_date, allows_partial_payment | Payment requests to evaluate |
-| `financial_profiles.csv` | 276 | user_id, home_currency, current_available_balance, minimum_balance_to_keep, payment_methods_user_will_consider | User financial preferences |
-| `financial_events.csv` | 25,342 | event_id, user_id, direction, amount, currency, event_date, status, flexibility | Historical and future transactions |
-| `exchange_rates.csv` | ~500 | rate_date, from_currency, to_currency, rate | Fixed dated conversion rates |
-| `request_payment_options.csv` | 791 | request_id, payment_method, payment_amount, number_of_payments, financing_fee | Available payment plans |
-| `messages.csv` | 216 | user_id, request_id, source_type, message_text | Notifications from employers/banks/merchants |
-| `images.csv` | 17 | image_id, user_id, related_event_id | Links images to events |
-| `sample_requests.csv` | 25 | Same as requests + all output columns | Golden examples for format reference |
-
-### 6.2 Event Types and Classifications
-
-**Statuses:** settled (25,148), pending (71), scheduled (70), cancelled (22), failed (21), unrealized (10)
-
-**Directions:** debit (23,609), credit (1,723), non_cash (10)
-
-**Flexibility values:** fixed (21,138), reducible (2,682), stoppable (1,297), reducible_or_stoppable (225)
-
-**Currencies:** INR, ZAR, IDR, USD, EUR
-
----
-
-## 7. Key Design Decisions
-
-### 7.1 Why Deterministic Over LLM?
-
-| Factor | Deterministic | LLM-based |
-|--------|-------------|-----------|
-| Reproducibility | Same input → same output | Non-deterministic |
-| Cost | $0.00 | $5-50 per run |
-| Speed | 32 seconds | Minutes |
-| Auditability | Every decision traceable | Black box |
-| Hallucination | Impossible | Risk of invented facts |
-| Accuracy on math | Exact | Can miscalculate |
-
-### 7.2 Image Amount Handling
-Instead of calling a vision API at runtime, we **manually inspected all 16 images** during development and hardcoded the extracted amounts in a dictionary:
-```python
-IMAGE_AMOUNTS = {
-    'event_253': 4365000.0,   # Pay slip: IDR net pay
-    'event_1442': 100000.0,   # Rent receipt: INR balance due
-    'event_1545': 41272.0,    # Bill of Supply: INR net amount
-    # ... 13 more entries
-}
-```
-This ensures zero latency and zero cost while maintaining accuracy.
-
-### 7.3 Spending Change Logic
-The flexibility field has **4 values**, not a generic "flexible":
-- **`stoppable`** → can be cut to zero (e.g., delivery membership)
-- **`reducible`** → can be reduced to `minimum_allowed_amount` (e.g., streaming plan)
-- **`reducible_or_stoppable`** → either option available
-- **`fixed`** → cannot be changed (e.g., rent, utilities)
-
-Spending changes only apply to:
-- Non-protected categories (not in user's `expense_categories_to_protect`)
-- Categories the user is willing to reduce or stop
-- Recurring expenses with ≥2 historical occurrences across ≥2 months
-
-### 7.4 Installment Ranking
-When multiple installment options are safe, we rank by:
-1. **Completes by deadline** — does the last payment land before `desired_completion_date`?
-2. **Lowest total cost** — minimize `total_payable_amount` (includes financing fees)
-3. **Earliest start** — prefer plans that begin sooner
-4. **Fewer payments** — fewer installments is simpler
-5. **Lowest option_id** — deterministic tie-breaker
-
----
-
-## 8. Challenges Faced & Solutions
-
-### Challenge 1: Multi-Currency Handling
-**Problem:** Users have balances in INR, ZAR, IDR, USD, EUR. Events may be in different currencies.
-**Solution:** Use `exchange_rates.csv` with exact date matching and ±7 day fallback. All amounts are converted to the user's `home_currency` before any safety calculation.
-
-### Challenge 2: Detecting Recurring Patterns
-**Problem:** Need to distinguish rent (monthly, fixed) from one-time purchases.
-**Solution:** Group settled debit events by `(description, category, flexibility)`. Require ≥2 occurrences in ≥2 different months. Use median day-of-month and mean amount for projection.
-
-### Challenge 3: Message Interpretation
-**Problem:** Messages in English AND Indonesian (Bahasa) contain salary changes, transfer notifications, refund status.
-**Solution:** Keyword-based pattern matching for both languages. Conservative extraction (first currency match only) to avoid false positives from one-time adjustments mentioned alongside regular salary.
-
-### Challenge 4: Image Data Without Vision API
-**Problem:** Some financial events have blank amounts that must be extracted from attached images.
-**Solution:** Manual visual inspection of all 16 PNG files during development, with amounts hardcoded in a lookup dictionary. This avoids runtime API costs while maintaining accuracy.
-
-### Challenge 5: Salary Date Overrides
-**Problem:** When an employer message shifts the salary date, the projection must replace the normal cycle for that month but continue normally afterward.
-**Solution:** If the override date is in the same month as the request, skip the normal cycle for that month only. Subsequent months use the regular monthly pattern.
-
----
-
-## 9. Output Statistics
-
-| Metric | Value |
-|--------|-------|
-| Total requests | 250 |
-| `affordable_now` | 47 (19%) |
-| `affordable_with_plan` | 49 (20%) |
-| `affordable_later` | 22 (9%) |
-| `not_affordable` | 132 (53%) |
-| `full_payment` | 56 |
-| `installments` | 35 |
-| `partial_payment` | 5 |
-| `wait` | 22 |
-| `not_recommended` | 132 |
-| Spending changes generated | 9 |
-
----
-
-## 10. Interview Q&A Preparation
-
-### Q: "How does your agent decide if someone can afford something?"
-**A:** We simulate the user's cash flow for 90 days. Starting from their current balance, we project all known future debits (pending payments, recurring expenses) and credits (confirmed salary). At every point in that 90-day window, the balance must stay above the user's minimum required balance. The "amount safe to pay" is the headroom at the tightest point in the forecast — the minimum balance across all 90 days minus the user's minimum requirement.
-
-### Q: "Why didn't you use an LLM?"
-**A:** Financial calculations require exact arithmetic. LLMs can hallucinate numbers, make arithmetic errors, and produce non-deterministic outputs. Our deterministic approach gives exact, reproducible results at zero cost and 32-second runtime for 250 requests. We also avoid the risk of the LLM inventing unsupported financial facts.
-
-### Q: "How do you handle foreign currencies?"
-**A:** We use fixed dated exchange rates from `exchange_rates.csv`. For each foreign-currency event, we look up the rate for the settlement date and currency pair. If the exact date isn't available, we use the nearest rate within ±7 days. All amounts are converted to the user's home currency before any safety calculation.
-
-### Q: "How do you detect recurring expenses?"
-**A:** We group all settled debit events by description, category, and flexibility type. If a pattern appears in at least 2 different calendar months, we consider it recurring. We use the median day-of-month and mean amount for forward projection.
-
-### Q: "What are spending changes and when do you recommend them?"
-**A:** Spending changes suggest stopping or reducing flexible recurring expenses to free up money. They're only recommended when the user can't afford the request without cuts. We respect the user's protected categories and only modify expenses in categories they've explicitly agreed to adjust. Maximum 3 changes, prioritized by savings potential.
-
-### Q: "How do you handle installment plans?"
-**A:** We evaluate each installment option from `request_payment_options.csv` against the 90-day balance curve. We build the exact payment schedule using the option's first payment date, frequency, and number of payments. Then we test whether subtracting each payment keeps the balance above the minimum at every point. Safe options are ranked by deadline compliance, total cost, start date, and number of payments.
-
-### Q: "What happens when records conflict?"
-**A:** We follow a resolution hierarchy: (1) explicit cancellation/settlement/amendment wins, (2) newer records from the same source override older ones, (3) settled events override estimates, (4) when unresolved, we choose the financially safer interpretation.
-
-### Q: "How do messages and images affect decisions?"
-**A:** Messages can override salary amounts, shift salary dates, flag internal transfers to ignore, and mark pending credits as unsettled. Images provide amounts for events where the CSV has blank values — we extracted these manually from receipts, pay slips, and bills. Both are treated as untrusted data — they can clarify financial facts but never override the challenge rules.
-
-### Q: "What's the flexibility system?"
-**A:** Every expense has a flexibility classification: `fixed` (can't change, like rent), `stoppable` (can eliminate entirely, like a delivery membership), `reducible` (can reduce to a minimum amount, like a streaming plan), or `reducible_or_stoppable` (either option). This determines which expenses can be cut when recommending spending changes.
-
-### Q: "Walk me through the code architecture."
-**A:** Three files with strict one-way dependencies. `main.py` is the CLI entry point — it loads requests and writes output. `agent.py` is the orchestrator — it caches all CSV datasets, builds financial state for each user, and runs the decision pipeline. `financial_engine.py` is the pure computation layer — it handles cashflow simulation, pattern detection, exchange rates, and message parsing with no file I/O of its own.
-
-### Q: "What would you improve?"
-**A:** 
-- More sophisticated NLU for message interpretation (currently keyword-based)
-- Vision API integration for dynamic image amount extraction
-- More granular recurring expense detection (weekly, bi-weekly patterns)
-- Better handling of linked events (investment lifecycles, refund chains)
-- Reducing the `not_affordable` rate (currently 53%) with smarter spending change optimization
-
----
-
-## 11. File Structure
+> "I have three Python files with a clean one-way dependency. Main loads the data, Agent makes decisions, and Engine does the math."
 
 ```
-hackerrank-orchestrate/
-├── code/
-│   ├── main.py                    # Entry point (python main.py)
-│   ├── agent.py                   # Decision orchestrator (548 lines)
-│   ├── financial_engine.py        # Cashflow simulation (558 lines)
-│   └── evaluation/
-│       └── usage_report.md        # Token/cost report
-├── dataset/
-│   ├── requests.csv               # 250 evaluation requests
-│   ├── financial_profiles.csv     # 276 user profiles
-│   ├── financial_events.csv       # 25,342 transactions
-│   ├── exchange_rates.csv         # Currency conversion rates
-│   ├── request_payment_options.csv # 791 payment plans
-│   ├── messages.csv               # 216 notifications
-│   ├── images.csv                 # 17 image-event links
-│   ├── sample_requests.csv        # 25 golden examples
-│   ├── output.csv                 # 250 predictions (generated)
-│   └── media/images/              # 16 PNG files
-├── AGENTS.md                      # Agent instructions
-├── README.md                      # Project documentation
-└── log.txt                        # Development chat transcript
+main.py  ──→  agent.py  ──→  financial_engine.py
+(Entry)       (Brain)         (Calculator)
 ```
+
+| File | Lines | What it does | Analogy |
+|------|-------|-------------|---------|
+| **main.py** | ~83 | Reads requests, writes output | The cashier — takes orders, delivers results |
+| **agent.py** | ~577 | Decision pipeline, ranks options | The financial advisor — decides what's best |
+| **financial_engine.py** | ~558 | Cash flow simulation, math | The accountant — does all the calculations |
+
+**Key point:** The engine never talks back to the agent. Data flows in one direction only.
 
 ---
 
-## 12. Submission Deliverables
+## 6. Input Data (What the System Reads)
 
-| Deliverable | Description | Status |
-|------------|-------------|--------|
-| **code.zip** | Full runnable solution with `evaluation/usage_report.md` | Ready |
-| **output.csv** | 250 predictions for all evaluation requests | Ready (250 rows, all validations pass) |
-| **chat_transcript** | Development conversation log | Ready (log.txt, 10 entries) |
+**If asked "What data does your system use?", say:**
 
-**Submission URL:**  
-https://www.hackerrank.com/contests/hackerrank-orchestrate-september26/challenges/buy-or-wait/submission
+> "There are 8 input files. The most important are the user's profile (who they are), their transaction history (what they spend and earn), and payment options (how they can pay)."
+
+| File | What's in it | Why it matters |
+|------|-------------|---------------|
+| **financial_profiles.csv** | Each user's balance, currency, minimum balance, protected categories, payment preferences | Tells us WHO the user is and what they care about |
+| **financial_events.csv** | 25,000+ transactions — salary, rent, groceries, bills | Tells us their SPENDING and EARNING patterns |
+| **requests.csv** | 250 purchase requests to evaluate | These are the QUESTIONS we need to answer |
+| **request_payment_options.csv** | Installment plans available for each request | These are the OPTIONS we can recommend |
+| **exchange_rates.csv** | Currency conversion rates | Handles multi-currency (INR, USD, EUR, ZAR, IDR) |
+| **messages.csv** | 216 messages from employers, banks, merchants | Extra info like salary changes, refunds |
+| **images.csv** | Links to receipt/payslip images | Provides amounts when CSV has blanks |
+| **sample_requests.csv** | 25 example requests with correct answers | Used for testing, NOT for evaluation |
+
+---
+
+## 7. Smart Features to Talk About
+
+### 7.1 Multi-Currency Support
+> "Users in India use Rupees, South Africa uses Rand, Indonesia uses Rupiah. When someone in India has a US Dollar expense, the system converts it using the exchange rate from that specific date. If the exact date isn't available, it looks ±7 days around that date."
+
+### 7.2 Message Understanding (English + Indonesian)
+> "The system reads messages from employers, banks, and merchants. For example, if an employer says 'Your salary is temporarily reduced to €1,200', the system adjusts the projected salary. It works in both English and Indonesian — recognizing keywords like 'gaji' (salary), 'naik' (increase), 'tanpa gaji' (unpaid leave)."
+
+### 7.3 Image Amounts (Without AI Vision)
+> "Some financial events have blank amounts in the CSV but have attached images (receipts, pay slips). Instead of using an expensive vision API at runtime, I manually inspected all 16 images during development and stored the amounts in a dictionary. This makes the system instant and free at runtime."
+
+### 7.4 Spending Changes (The Flexibility System)
+> "Every expense has a flexibility type: **fixed** (can't change, like rent), **stoppable** (can cancel, like a gym membership), **reducible** (can lower the amount, like a phone plan), or **reducible_or_stoppable** (either option). When someone can't quite afford something, the system suggests stopping or reducing up to 3 flexible expenses to free up money — but never touches protected categories like rent or groceries."
+
+---
+
+## 8. Challenges You Faced (and How You Solved Them)
+
+**If asked "What challenges did you face?", pick 2-3 of these:**
+
+### Challenge 1: "The Flexibility Bug"
+> "Initially, my code looked for expenses labeled 'flexible', but the dataset actually used four specific values: 'stoppable', 'reducible', 'reducible_or_stoppable', and 'fixed'. This meant zero spending changes were generated across all 250 requests. I caught this during testing by checking the output statistics. After fixing it, spending changes went from 0 to 9, and the 'not affordable' rate dropped from 56% to 53%."
+
+**Why this is good to mention:** It shows you test your code, find bugs, and measure impact.
+
+### Challenge 2: "Indonesian Salary Messages"
+> "The dataset included messages in Indonesian (Bahasa) from employers about salary changes. A simple keyword search for 'gaji' (salary) would pick up every message mentioning salary, including one-time bonuses. I needed to be more precise — only extracting amounts when paired with change signals like 'naik' (increase) or 'menjadi' (becomes). I also used the first currency match to avoid accidentally picking up a one-time arrears amount mentioned alongside the regular salary."
+
+**Why this is good to mention:** It shows you handle edge cases and think about false positives.
+
+### Challenge 3: "Salary Date Overrides"
+> "When an employer message says 'salary will come on March 15th instead of March 1st', the system needs to skip the normal March 1st salary and use March 15th instead. But April's salary should still come on April 1st as normal. My first version accidentally skipped ALL future salaries after the override. I fixed it to only replace the salary in the same month as the override."
+
+**Why this is good to mention:** It shows you think about cascading effects in financial systems.
+
+---
+
+## 9. Common Interview Questions & Natural Answers
+
+### Q1: "Walk me through your project."
+> "I built a financial decision agent for a hackathon. It takes 250 purchase requests — each from a different user with different incomes, expenses, and priorities — and decides the safest way to pay. The system simulates each user's cash flow for 90 days, projects all their known expenses and income, then checks if paying for the item would ever drop their balance below their safety minimum. Based on that, it recommends full payment, installments, partial payment, waiting, or not proceeding. The whole thing is deterministic — pure Python and math, no AI models, zero cost."
+
+### Q2: "Why did you choose Python?"
+> "Python is the best language for data processing. Pandas makes CSV handling trivial, numpy handles math efficiently, and I can prototype quickly. For a 24-hour hackathon, speed of development matters."
+
+### Q3: "How does the 90-day simulation work?"
+> "I start with the user's current balance and go day by day for 90 days. Each day, I add any expected income and subtract any expected expenses. Recurring expenses like rent are projected based on their historical day-of-month. Pending payments are subtracted on their scheduled date. At the end, I have a curve showing the user's projected balance every day. The 'safe amount' is the minimum headroom across all those days."
+
+### Q4: "What makes your solution different from others?"
+> "Three things: First, it's fully deterministic — same input always gives the same output, which is critical for financial decisions. Second, it handles 5 currencies with dated exchange rates, not just a single rate. Third, it respects user preferences — protected categories are never cut, installment plans are ranked by total cost, and spending changes are limited to 3 maximum."
+
+### Q5: "How do you handle conflicting data?"
+> "I follow a priority hierarchy: explicit cancellations win first, then newer records override older ones, settled transactions override estimates, and when nothing is clear, I choose the financially safer option. For example, if an employer message says salary is reduced, that overrides the historical salary amount."
+
+### Q6: "What would you improve if you had more time?"
+> "Four things: (1) Better message understanding using actual NLP instead of keyword matching, (2) A vision API for automatic image amount extraction instead of hardcoding, (3) Weekly and bi-weekly recurring patterns instead of just monthly, (4) Smarter spending change optimization to reduce the 'not affordable' rate from 53%."
+
+### Q7: "How do you know your output is correct?"
+> "I built a validation script that checks every output row against the challenge rules: amount bounds, valid enum values, date formats, payment plan arithmetic (do partial payments add up to the total?), and date consistency. All 250 rows pass every check. I also compared my output format against the 25 sample requests provided by the organizers."
+
+### Q8: "Explain your decision pipeline."
+> "It's a priority waterfall. I try the best option first — full payment today. If that's not safe, I try installments — evaluating each available plan against the 90-day balance curve. If installments don't work, I try partial payment — some now, rest later. Then I try suggesting spending changes to free up money. If nothing works but a future date is safe, I say 'wait'. If nothing works at all, I say 'not recommended'. The first safe option wins."
+
+### Q9: "How do installments work?"
+> "Each request has 2-4 installment options from the seller. For each option, I build the exact payment schedule — say 3 payments of ₹10,000 starting April 1st, monthly. Then I subtract each payment from the projected balance on its due date and check if the balance stays above minimum at every point after. Safe options are ranked by: does it finish by the deadline, lowest total cost including fees, earliest start date, and fewest payments."
+
+### Q10: "Tell me about the dataset."
+> "There are 250 requests to evaluate, 276 user profiles, 25,000+ financial events across 5 currencies (INR, ZAR, IDR, USD, EUR). Events have 6 statuses — settled, pending, scheduled, cancelled, failed, unrealized. Expenses have 4 flexibility types. There are also 216 messages in English and Indonesian, and 16 images of receipts and pay slips."
+
+---
+
+## 10. Key Numbers to Remember
+
+| Number | What it represents |
+|--------|-------------------|
+| **250** | Requests evaluated |
+| **276** | User profiles in the system |
+| **25,342** | Financial events processed |
+| **90 days** | Cash flow forecast window |
+| **5** | Currencies supported (INR, ZAR, IDR, USD, EUR) |
+| **32 seconds** | Total runtime for all 250 requests |
+| **$0.00** | API cost (fully deterministic) |
+| **3** | Python files (main, agent, engine) |
+| **4** | Affordability statuses |
+| **5** | Payment methods |
+| **4** | Flexibility types (fixed, stoppable, reducible, reducible_or_stoppable) |
+
+### Output Distribution:
+| Status | Count | Percentage |
+|--------|-------|-----------|
+| Affordable Now | 47 | 19% |
+| Affordable with Plan | 49 | 20% |
+| Affordable Later | 22 | 9% |
+| Not Affordable | 132 | 53% |
+
+---
+
+## 11. Tips for the Interview
+
+1. **Start simple, then go deep.** Give the 30-second pitch first. Only go into technical details when asked.
+
+2. **Use analogies.** "It's like asking a financially smart friend for advice" is better than "it runs a 90-day cash flow simulation with recurring pattern detection."
+
+3. **Admit tradeoffs.** "The deterministic approach sacrifices some flexibility for exactness and zero cost" shows maturity.
+
+4. **Mention the bug you fixed.** Interviewers love hearing about bugs you caught and fixed — it shows real engineering skills.
+
+5. **Know your numbers.** If they ask "how many requests" or "how fast is it", answer immediately. It shows you know your project inside out.
+
+6. **If you don't know, say so.** "That's a good question — I didn't implement that, but here's how I would approach it..." is better than making something up.
+
+7. **Emphasize the deadline.** "This was built in 24 hours" — interviewers understand hackathon constraints and will appreciate what you accomplished.
+
+---
+
+## 12. One-Page Cheat Sheet (Review Right Before Interview)
+
+```
+PROJECT: Buy or Wait? — Financial Decision Agent
+HACKATHON: HackerRank Orchestrate (24 hours)
+
+WHAT IT DOES:
+  For each purchase request → simulates 90-day cash flow → 
+  recommends safest payment method
+
+TECH: Python + pandas + numpy (no LLM, no APIs, $0 cost)
+
+3 FILES:
+  main.py (entry) → agent.py (decisions) → financial_engine.py (math)
+
+5-STEP PIPELINE:
+  1. Load user profile (balance, preferences, protected categories)
+  2. Detect recurring patterns from 25K+ events
+  3. Simulate balance day-by-day for 90 days
+  4. Calculate safe amount and earliest full-payment date
+  5. Run decision waterfall: full → installments → partial → wait → no
+
+DECISION PRIORITY:
+  full_payment > installments > partial_payment > 
+  spending_changes > wait > not_recommended
+
+SMART FEATURES:
+  • 5 currencies with dated exchange rates
+  • English + Indonesian message parsing
+  • 4 flexibility types for spending changes
+  • Image amounts extracted at dev time (no runtime API)
+  • Installment ranking by cost, deadline, start date
+
+KEY STATS:
+  250 requests | 32 seconds | $0 cost | 0 hallucinations
+  47 affordable_now | 49 with_plan | 22 later | 132 not_affordable
+
+BIGGEST BUG FIXED:
+  Flexibility field mismatch → spending changes went from 0 to 9
+```
